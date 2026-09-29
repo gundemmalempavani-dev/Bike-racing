@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium Bike Racing</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+    }
+
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block;
+      background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 30%, #228B22 40%, #1a7a1a 100%);
+      box-shadow: 0 0 50px rgba(0, 255, 255, 0.3), inset 0 0 50px rgba(0, 0, 0, 0.2);
+      image-rendering: crisp-edges;
+    }
+
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 20, 40, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 20px 25px;
+      border-radius: 12px;
+      border: 2px solid #00FFFF;
+      color: #00FF88;
+      font-size: 14px;
+      line-height: 2;
+      font-weight: bold;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      font-family: 'Courier New', monospace;
+      z-index: 10;
+    }
+
+    .hud span {
+      color: #00FFFF;
+    }
+
+    .speedometer {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 150px;
+      height: 150px;
+      background: rgba(0, 20, 40, 0.9);
+      border: 3px solid #00FFFF;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .speedometer-value {
+      text-align: center;
+    }
+
+    .speedometer-value .number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #00FF88;
+      font-family: 'Courier New', monospace;
+    }
+
+    .speedometer-value .label {
+      font-size: 12px;
+      color: #00FFFF;
+      font-family: 'Courier New', monospace;
+    }
+
+    .leaderboard {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 20, 40, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 15px 20px;
+      border-radius: 12px;
+      border: 2px solid #00FFFF;
+      color: #00FF88;
+      font-size: 13px;
+      line-height: 1.8;
+      min-width: 200px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      font-family: 'Courier New', monospace;
+      z-index: 10;
+    }
+
+    .leaderboard-title {
+      color: #00FFFF;
+      font-weight: bold;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #00FFFF;
+      padding-bottom: 8px;
+    }
+
+    .leaderboard-entry {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .leaderboard-entry.player {
+      color: #FFD700;
+      font-weight: bold;
+      background: rgba(255, 215, 0, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .finish-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 100;
+      backdrop-filter: blur(5px);
+    }
+
+    .finish-screen.show {
+      display: flex;
+    }
+
+    .finish-content {
+      text-align: center;
+      color: #00FF88;
+      font-family: 'Courier New', monospace;
+    }
+
+    .finish-content h1 {
+      font-size: 72px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px #00FFFF;
+      color: #00FFFF;
+    }
+
+    .finish-content h2 {
+      font-size: 48px;
+      margin-bottom: 20px;
+      color: #FFD700;
+    }
+
+    .finish-content p {
+      font-size: 20px;
+      margin: 10px 0;
+    }
+
+    .finish-content .restart {
+      font-size: 18px;
+      color: #00FFFF;
+      margin-top: 30px;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0.3; }
+    }
+
+    .controls-hint {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 20, 40, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 15px 20px;
+      border-radius: 12px;
+      border: 2px solid #00FFFF;
+      color: #00FF88;
+      font-size: 12px;
+      line-height: 1.8;
+      text-align: right;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      font-family: 'Courier New', monospace;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="hud">
+      <div>🏁 <span>DISTANCE</span></div>
+      <div id="distance">0 m</div>
+      <div style="margin-top: 10px;">⚡ <span>GEAR</span></div>
+      <div id="gear">1</div>
+    </div>
+
+    <div class="speedometer">
+      <div class="speedometer-value">
+        <div class="number" id="speedValue">0</div>
+        <div class="label">KM/H</div>
+      </div>
+    </div>
+
+    <div class="leaderboard">
+      <div class="leaderboard-title">🏆 RANKINGS</div>
+      <div id="leaderboardContent"></div>
+    </div>
+
+    <div class="controls-hint">
+      <div>⬆️ W - ACCELERATE</div>
+      <div>⬇️ S - BRAKE</div>
+      <div>⬅️ A - LEFT</div>
+      <div>➡️ D - RIGHT</div>
+      <div style="margin-top: 8px; border-top: 1px solid #00FFFF; padding-top: 8px;">SPACE - RESTART</div>
+    </div>
+
+    <div class="finish-screen" id="finishScreen">
+      <div class="finish-content">
+        <h1 id="finishTitle">FINISH!</h1>
+        <h2 id="finishRank">1st PLACE</h2>
+        <p>Final Distance: <span id="finalDistance">0</span> m</p>
+        <p id="finishTime">Time: 0.0s</p>
+        <div class="restart">Press SPACE to race again...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    
+    // Optimize canvas
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let gameState = {
+      running: true,
+      finished: false,
+      startTime: Date.now(),
+      finishTime: 0
+    };
+
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameState.finished) resetGame();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    const game = {
+      track: {
+        centerX: canvas.width / 2,
+        width: 350,
+        finishDistance: 3000,
+        roadColor: '#2a2a3e',
+        grassColor: '#1a5c1a',
+        lineSpacing: 40
+      },
+      player: {
+        x: canvas.width / 2,
+        y: canvas.height - 100,
+        vx: 0,
+        vy: 0,
+        speed: 0,
+        maxSpeed: 12,
+        acceleration: 0.35,
+        braking: 0.5,
+        friction: 0.04,
+        steering: 0,
+        maxSteering: 0.15,
+        steeringReturn: 0.08,
+        distance: 0,
+        rotation: 0,
+        targetRotation: 0,
+        color: '#FF0080'
+      },
+      opponents: [],
+      camera: {
+        offsetY: 0,
+        targetOffsetY: 0,
+        smoothing: 0.1
+      }
+    };
+
+    function createOpponents() {
+      game.opponents = [
+        {
+          name: 'CRIMSON',
+          color: '#FF4444',
+          x: game.track.centerX - 120,
+          y: canvas.height - 100,
+          distance: 0,
+          speed: 7.2,
+          steering: 0,
+          targetSteering: 0,
+          rotation: 0,
+          wobblePhase: 0,
+          wobbleAmplitude: 1.2
+        },
+        {
+          name: 'AZURE',
+          color: '#44AAFF',
+          x: game.track.centerX,
+          y: canvas.height - 100,
+          distance: 50,
+          speed: 6.8,
+          steering: 0,
+          targetSteering: 0,
+          rotation: 0,
+          wobblePhase: Math.PI / 2,
+          wobbleAmplitude: 1.4
+        },
+        {
+          name: 'EMERALD',
+          color: '#44FF88',
+          x: game.track.centerX + 140,
+          y: canvas.height - 100,
+          distance: 100,
+          speed: 6.5,
+          steering: 0,
+          targetSteering: 0,
+          rotation: 0,
+          wobblePhase: Math.PI,
+          wobbleAmplitude: 1.3
+        },
+        {
+          name: 'PHANTOM',
+          color: '#AA44FF',
+          x: game.track.centerX + 80,
+          y: canvas.height - 100,
+          distance: 150,
+          speed: 6.9,
+          steering: 0,
+          targetSteering: 0,
+          rotation: 0,
+          wobblePhase: Math.PI * 1.5,
+          wobbleAmplitude: 1.1
+        }
+      ];
+    }
+
+    function resetGame() {
+      game.player.x = game.track.centerX;
+      game.player.y = canvas.height - 100;
+      game.player.speed = 0;
+      game.player.distance = 0;
+      game.player.steering = 0;
+      game.player.rotation = 0;
+      game.camera.offsetY = 0;
+      createOpponents();
+      gameState.running = true;
+      gameState.finished = false;
+      gameState.startTime = Date.now();
+      document.getElementById('finishScreen').classList.remove('show');
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function updatePlayer(deltaTime) {
+      const dt = Math.min(deltaTime, 0.016); // Cap at 60fps
+
+      // Input handling
+      const accelerate = keys['w'] || keys['arrowup'];
+      const brake = keys['s'] || keys['arrowdown'];
+      const steerLeft = keys['a'] || keys['arrowleft'];
+      const steerRight = keys['d'] || keys['arrowright'];
+
+      // Speed update
+      if (accelerate) {
+        game.player.speed += game.player.acceleration * 60 * dt;
+      }
+      if (brake) {
+        game.player.speed -= game.player.braking * 60 * dt;
+      }
+
+      game.player.speed -= game.player.friction * 60 * dt;
+      game.player.speed = clamp(game.player.speed, 0, game.player.maxSpeed);
+
+      // Steering
+      const steerInput = (steerRight ? 1 : 0) - (steerLeft ? 1 : 0);
+      game.player.targetSteering = steerInput * game.player.maxSteering;
+      game.player.steering += (game.player.targetSteering - game.player.steering) * 0.2;
+
+      // Lateral movement
+      const moveStrength = (1 + game.player.speed * 0.5) * 60 * dt;
+      game.player.x += game.player.steering * moveStrength;
+
+      // Boundary check
+      const roadLeft = game.track.centerX - game.track.width / 2 + 25;
+      const roadRight = game.track.centerX + game.track.width / 2 - 25;
+      game.player.x = clamp(game.player.x, roadLeft, roadRight);
+
+      // Rotation for lean effect
+      game.player.targetRotation = game.player.steering * 0.8;
+      game.player.rotation += (game.player.targetRotation - game.player.rotation) * 0.15;
+
+      // Distance
+      game.player.distance += game.player.speed * 15 * 60 * dt;
+
+      // Camera smooth follow
+      game.camera.targetOffsetY = -game.player.distance * 0.15;
+      game.camera.offsetY += (game.camera.targetOffsetY - game.camera.offsetY) * game.camera.smoothing;
+    }
+
+    function updateOpponents(deltaTime) {
+      const dt = Math.min(deltaTime, 0.016);
+
+      game.opponents.forEach((opp, idx) => {
+        // AI steering with wobble pattern
+        opp.wobblePhase += dt * 2;
+        const wobble = Math.sin(opp.wobblePhase) * opp.wobbleAmplitude;
+        const roadPosition = (opp.distance * 0.003) % Math.PI;
+        
+        opp.targetSteering = wobble * 0.08 + Math.sin(roadPosition) * 0.06;
+        opp.steering += (opp.targetSteering - opp.steering) * 0.15;
+
+        // Speed variation
+        opp.speed += Math.sin(opp.distance * 0.005 + idx) * 0.01;
+        opp.speed = clamp(opp.speed, 5.5, 7.5);
+
+        // Position update
+        const moveStrength = (1 + opp.speed * 0.5) * 60 * dt;
+        opp.x += opp.steering * moveStrength;
+
+        // Boundary check
+        const roadLeft = game.track.centerX - game.track.width / 2 + 25;
+        const roadRight = game.track.centerX + game.track.width / 2 - 25;
+        opp.x = clamp(opp.x, roadLeft, roadRight);
+
+        // Distance
+        opp.distance += opp.speed * 12 * 60 * dt;
+
+        // Rotation
+        opp.rotation = opp.steering * 0.6;
+      });
+    }
+
+    function drawRoad() {
+      // Grass background
+      ctx.fillStyle = game.track.grassColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Road
+      ctx.fillStyle = game.track.roadColor;
+      ctx.fillRect(
+        game.track.centerX - game.track.width / 2,
+        0,
+        game.track.width,
+        canvas.height
+      );
+
+      // Road edges
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(
+        game.track.centerX - game.track.width / 2,
+        0,
+        game.track.width,
+        canvas.height
+      );
+
+      // Center line with dashes
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([30, 20]);
+      ctx.beginPath();
+      ctx.moveTo(game.track.centerX, game.camera.offsetY % 60 - 60);
+      ctx.lineTo(game.track.centerX, canvas.height + (game.camera.offsetY % 60));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Road markings
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 2;
+      for (let i = -2; i < 20; i++) {
+        const y = i * 60 + (game.camera.offsetY % 60);
+        ctx.beginPath();
+        ctx.moveTo(game.track.centerX - 30, y);
+        ctx.lineTo(game.track.centerX + 30, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawBike(x, y, bike) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(bike.rotation);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.ellipse(0, 28, 20, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rear wheel
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(-16, 20, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Rear wheel spokes
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(-16 + Math.cos(angle) * 12, 20 + Math.sin(angle) * 12);
+        ctx.lineTo(-16, 20);
+        ctx.stroke();
+      }
+
+      // Front wheel
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(16, 20, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Front wheel spokes
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(16 + Math.cos(angle) * 12, 20 + Math.sin(angle) * 12);
+        ctx.lineTo(16, 20);
+        ctx.stroke();
+      }
+
+      // Frame (main triangle)
+      ctx.strokeStyle = bike.color;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = bike.color;
+      ctx.shadowBlur = 10;
+
+      // Main frame tubes
+      ctx.beginPath();
+      ctx.moveTo(-16, 18);
+      ctx.lineTo(0, -8);
+      ctx.lineTo(16, 18);
+      ctx.moveTo(0, -8);
+      ctx.lineTo(0, 5);
+      ctx.moveTo(-16, 18);
+      ctx.lineTo(16, 18);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+
+      // Chain
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(-16, 20, 6, 0.5, 2.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-10, 15);
+      ctx.lineTo(10, 15);
+      ctx.stroke();
+
+      // Seat
+      ctx.fillStyle = '#333';
+      ctx.fillRect(-8, -20, 16, 6);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(-7, -19, 14, 4);
+
+      // Handlebars
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, -8, 10, 0.8, 2.3);
+      ctx.stroke();
+
+      // Headlight
+      ctx.fillStyle = bike.color;
+      ctx.beginPath();
+      ctx.arc(0, -8, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawFinishLine() {
+      const finishY = game.track.finishDistance - game.player.distance;
+      
+      if (finishY > -100 && finishY < canvas.height + 100) {
+        const screenY = canvas.height / 2 + finishY * 0.15;
+
+        // Checkered pattern
+        const squareSize = 20;
+        ctx.fillStyle = '#FFD700';
+        for (let x = game.track.centerX - game.track.width / 2; x < game.track.centerX + game.track.width / 2; x += squareSize * 2) {
+          for (let y = screenY - 40; y < screenY + 40; y += squareSize * 2) {
+            ctx.fillRect(x, y, squareSize, squareSize);
+            ctx.fillRect(x + squareSize, y + squareSize, squareSize, squareSize);
+          }
+        }
+        ctx.fillStyle = '#000';
+        for (let x = game.track.centerX - game.track.width / 2 + squareSize; x < game.track.centerX + game.track.width / 2; x += squareSize * 2) {
+          for (let y = screenY - 40 + squareSize; y < screenY + 40; y += squareSize * 2) {
+            ctx.fillRect(x, y, squareSize, squareSize);
+          }
+        }
+
+        // Finish text
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('FINISH', game.track.centerX, screenY + 10);
+      }
+    }
+
+    function drawRacers() {
+      // Draw opponents first (behind player)
+      game.opponents.forEach((opp) => {
+        const screenY = canvas.height / 2 + (opp.distance - game.player.distance) * 0.15;
+        if (screenY > -50 && screenY < canvas.height + 50) {
+          drawBike(opp.x, screenY, opp);
+        }
+      });
+
+      // Draw player
+      drawBike(game.player.x, canvas.height / 2, game.player);
+    }
+
+    function updateHUD() {
+      document.getElementById('distance').textContent = Math.floor(game.player.distance) + ' m';
+      document.getElementById('speedValue').textContent = Math.floor(game.player.speed * 10);
+      
+      const gear = Math.floor(game.player.speed / 2) + 1;
+      document.getElementById('gear').textContent = Math.min(gear, 6);
+
+      // Leaderboard
+      const rankings = [...game.opponents, {
+        name: 'YOU',
+        distance: game.player.distance,
+        isPlayer: true
+      }].sort((a, b) => b.distance - a.distance);
+
+      const leaderboardHTML = rankings.map((r, i) => `
+        <div class="leaderboard-entry ${r.isPlayer ? 'player' : ''}">
+          <span>${i + 1}. ${r.name}</span>
+          <span>${Math.floor(r.distance)}m</span>
+        </div>
+      `).join('');
+
+      document.getElementById('leaderboardContent').innerHTML = leaderboardHTML;
+    }
+
+    function checkFinish() {
+      if (game.player.distance >= game.track.finishDistance && !gameState.finished) {
+        gameState.finished = true;
+        gameState.finishTime = (Date.now() - gameState.startTime) / 1000;
+
+        const rankings = [...game.opponents, {
+          name: 'YOU',
+          distance: game.player.distance
+        }].sort((a, b) => b.distance - a.distance);
+
+        const playerRank = rankings.findIndex(r => r.name === 'YOU') + 1;
+        const rankNames = ['1st', '2nd', '3rd', '4th', '5th'];
+
+        document.getElementById('finishTitle').textContent = playerRank === 1 ? '🏆 VICTORY!' : 'FINISHED!';
+        document.getElementById('finishRank').textContent = rankNames[playerRank - 1] + ' PLACE';
+        document.getElementById('finalDistance').textContent = Math.floor(game.player.distance);
+        document.getElementById('finishTime').textContent = `Time: ${gameState.finishTime.toFixed(1)}s`;
+        
+        document.getElementById('finishScreen').classList.add('show');
+      }
+    }
+
+    function render() {
+      // Clear
+      ctx.fillStyle = game.track.grassColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Save context
+      ctx.save();
+
+      // Apply camera offset
+      ctx.translate(0, game.camera.offsetY);
+
+      // Draw road
+      drawRoad();
+
+      // Draw finish line
+      drawFinishLine();
+
+      // Draw racers
+      drawRacers();
+
+      // Restore context
+      ctx.restore();
+    }
+
+    let lastTime = performance.now();
+
+    function gameLoop(currentTime) {
+      const deltaTime = (currentTime - lastTime) / 1000;
+      lastTime = currentTime;
+
+      if (gameState.running) {
+        updatePlayer(deltaTime);
+        updateOpponents(deltaTime);
+        checkFinish();
+      }
+
+      render();
+      updateHUD();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    createOpponents();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
